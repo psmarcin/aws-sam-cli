@@ -265,12 +265,16 @@ class CachedBuildStrategy(BuildStrategy):
         """
         Builds single function definition with caching
         """
+        LOG.debug("[CACHE] build_definition.packagetype: '%s'", build_definition.packagetype)
         if build_definition.packagetype == IMAGE:
             return self._delegate_build_strategy.build_single_function_definition(build_definition)
 
         code_dir = str(pathlib.Path(self._base_dir, cast(str, build_definition.codeuri)).resolve())
+        LOG.debug("[CACHE] code_dir: '%s'", code_dir)
         source_hash = dir_checksum(code_dir, ignore_list=[".aws-sam"], hash_generator=hashlib.sha256())
+        LOG.debug("[CACHE] source_hash: '%s'", source_hash)
         cache_function_dir = pathlib.Path(self._cache_dir, build_definition.uuid)
+        LOG.debug("[CACHE] cache_function_dir: '%s'", cache_function_dir)
         function_build_results = {}
 
         if not cache_function_dir.exists() or build_definition.source_hash != source_hash:
@@ -278,6 +282,7 @@ class CachedBuildStrategy(BuildStrategy):
                 "Cache is invalid, running build and copying resources for following functions (%s)",
                 build_definition.get_resource_full_paths(),
             )
+            # TODO: log things in this function
             build_result = self._delegate_build_strategy.build_single_function_definition(build_definition)
             function_build_results.update(build_result)
 
@@ -285,6 +290,7 @@ class CachedBuildStrategy(BuildStrategy):
                 shutil.rmtree(str(cache_function_dir))
 
             build_definition.source_hash = source_hash
+            LOG.debug("[CACHE] build_definition.source_hash: '%s'", build_definition.source_hash)
             # Since all the build contents are same for a build definition, just copy any one of them into the cache
             for _, value in build_result.items():
                 osutils.copytree(value, str(cache_function_dir))
